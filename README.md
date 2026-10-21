@@ -78,6 +78,48 @@ Nếu đã có `"allow": [ … ]` thì chỉ thêm `"mcp__pms"` vào mảng đó
   Cài đặt → Tài khoản PMS.
 - Mỗi tài khoản PMS thêm (một MCP server riêng) cần một quy tắc như vậy.
 
+## Cập nhật
+
+Xem phiên bản đang cài ở **+ → Plugins**, so với `version` trong
+[`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) của repo.
+
+**Claude Code ở terminal:**
+
+```bash
+claude plugin marketplace update claude-code-logtime-mod
+```
+
+```bash
+claude plugin update log-time@claude-code-logtime-mod
+```
+
+Rồi khởi động lại phiên.
+
+**Claude Desktop:** app giữ một bản clone của repo và **không tự kéo bản mới**; gỡ rồi cài lại vẫn chép từ bản clone cũ.
+Cập nhật bản clone bằng git:
+
+1. Thoát hẳn Claude Desktop (cả biểu tượng ở khay hệ thống / thanh menu), để app không giữ file.
+2. Kéo bản clone lên `main` mới nhất và xem phiên bản.
+
+   Windows (PowerShell):
+
+   ```powershell
+   $m = "$env:USERPROFILE/.claude/plugins/marketplaces/claude-code-logtime-mod"; git -C $m fetch origin; git -C $m reset --hard origin/main; Select-String '"version"' "$m/.claude-plugin/plugin.json"
+   ```
+
+   macOS / Linux:
+
+   ```bash
+   m=~/.claude/plugins/marketplaces/claude-code-logtime-mod; git -C $m fetch origin && git -C $m reset --hard origin/main && grep '"version"' $m/.claude-plugin/plugin.json
+   ```
+
+3. Xoá bản chép của phiên bản cũ trong `~/.claude/plugins/cache/claude-code-logtime-mod/log-time/` (Windows:
+   `$env:USERPROFILE/.claude/plugins/cache/claude-code-logtime-mod/log-time/`), ví dụ thư mục `0.2.0`.
+4. Mở lại app → **+ → Plugins** → cài hoặc bật **log-time**, kiểm phiên bản mới, rồi mở một phiên mới.
+
+Đường dẫn trong lệnh dùng dấu `/` (PowerShell nhận được): copy từ một số khung chat, `\.` có thể mất dấu `\` và lệnh
+báo không tìm thấy thư mục.
+
 ## Cấu hình khi cài
 
 | Tuỳ chọn | Mặc định | Dùng khi |
