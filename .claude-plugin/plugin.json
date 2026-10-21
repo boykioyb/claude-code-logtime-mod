@@ -1,6 +1,6 @@
 {
   "name": "log-time",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "A pane to log work hours by day and week and push them to the PMS through its worklog MCP tools",
   "author": {
     "name": "boykioyb"

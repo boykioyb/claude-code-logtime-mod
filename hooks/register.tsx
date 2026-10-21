@@ -698,6 +698,7 @@ export const register: Register = (on, options) => {
         .then(() => update($, viewAtom, () => 'day'))
         .then(() => redraw($))
         .then(() => $.ui.scroll({ in: PANE, to: 'start' }))
+        .catch(() => undefined)
     const setView = (v: LogTimeView) => () => void update($, viewAtom, () => v).then(() => redraw($))
     const run = (task: () => Promise<unknown>) => () => {
       if (isBusy) return
