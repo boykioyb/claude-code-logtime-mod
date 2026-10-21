@@ -624,7 +624,20 @@ export const register: Register = (on, options) => {
       return <Text dimColor>Panel Log time cần ô nhập và danh sách chọn: mở trên Claude Desktop hoặc terminal.</Text>
     }
     const elements = $.ui.resolve(e)
-    const { Box, Text, Button, Input, Select } = elements
+    const { Box, Input, Select } = elements
+    // On the terminal theme, `subtle` is a border colour and a dimmed run nearly vanishes on a dark background, so
+    // secondary text takes the theme's `inactive` (its readable secondary-text colour) there instead. Desktop keeps
+    // its own greys untouched.
+    const isTerminal = e.surface === 'terminal'
+    const BaseText = elements.Text
+    const BaseButton = elements.Button
+    const Text = (props: Parameters<typeof BaseText>[0]) => {
+      if (!isTerminal) return BaseText(props)
+      const isSecondary = props.color === 'subtle' || (props.dimColor === true && props.color === undefined)
+      return BaseText({ ...props, color: isSecondary ? 'inactive' : props.color, dimColor: false })
+    }
+    const Button = (props: Parameters<typeof BaseButton>[0]) =>
+      BaseButton(isTerminal ? { ...props, dimColor: false } : props)
     // The terminal has no Svg (its table still answers the name, with an empty element): bars and rules are drawn
     // there in block and line characters instead.
     const Svg = e.surface !== 'terminal' && 'Svg' in elements ? elements.Svg : null
@@ -732,9 +745,10 @@ export const register: Register = (on, options) => {
       dim?: boolean
       onPress: () => void
     }) => (
+      // The terminal cannot dim a button legibly, so there the current tab is the accented (primary) one.
       <Button
         key={props.k}
-        variant="secondary"
+        variant={isTerminal && props.active ? 'primary' : 'secondary'}
         dimColor={props.dim ?? props.active === false}
         label={props.label}
         onPress={props.onPress}

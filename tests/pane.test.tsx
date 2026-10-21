@@ -28,6 +28,13 @@ test('the day view draws on the terminal and on desktop', async ($, on) => {
     // The terminal has no Svg: the day's bar is drawn in block characters there.
     const bar = await ui.find({ type: 'Text', text: /░/ })
     expect(bar !== undefined).toBe(surface === 'terminal')
+    // Secondary text stays readable on the terminal theme: no border-grey `subtle`, no dimmed run.
+    if (surface === 'terminal') {
+      const texts = await ui.findAll({ type: 'Text' })
+      expect(texts.length > 10).toBe(true)
+      expect(texts.some(t => t.props.color === 'inactive')).toBe(true)
+      expect(texts.filter(t => t.props.color === 'subtle' || t.props.dimColor === true).length).toBe(0)
+    }
     await ui.unmount()
   }
 })
