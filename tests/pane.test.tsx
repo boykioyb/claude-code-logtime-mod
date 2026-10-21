@@ -33,6 +33,8 @@ test('the day view draws on the terminal and on desktop', async ($, on) => {
       const texts = await ui.findAll({ type: 'Text' })
       expect(texts.length > 10).toBe(true)
       expect(texts.some(t => t.props.color === 'inactive')).toBe(true)
+      // Every run names a theme colour there: an uncoloured run would take the terminal's own grey.
+      expect(texts.filter(t => t.props.color === undefined).map(t => t.text)).toEqual([])
       expect(texts.filter(t => t.props.color === 'subtle' || t.props.dimColor === true).length).toBe(0)
     }
     await ui.unmount()

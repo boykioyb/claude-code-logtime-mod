@@ -625,19 +625,29 @@ export const register: Register = (on, options) => {
     }
     const elements = $.ui.resolve(e)
     const { Box, Input, Select } = elements
-    // On the terminal theme, `subtle` is a border colour and a dimmed run nearly vanishes on a dark background, so
-    // secondary text takes the theme's `inactive` (its readable secondary-text colour) there instead. Desktop keeps
-    // its own greys untouched.
+    // On the terminal an uncoloured run takes the terminal's own grey, `subtle` is a border colour and a dimmed run
+    // nearly vanishes, so every run there names a theme colour: `text` (white on a dark theme, black on a light one)
+    // for primary text, `inactive` (the theme's readable secondary text) for the rest. Desktop keeps its own greys.
     const isTerminal = e.surface === 'terminal'
     const BaseText = elements.Text
     const BaseButton = elements.Button
     const Text = (props: Parameters<typeof BaseText>[0]) => {
       if (!isTerminal) return BaseText(props)
       const isSecondary = props.color === 'subtle' || (props.dimColor === true && props.color === undefined)
-      return BaseText({ ...props, color: isSecondary ? 'inactive' : props.color, dimColor: false })
+      return BaseText({ ...props, color: isSecondary ? 'inactive' : (props.color ?? 'text'), dimColor: false })
     }
-    const Button = (props: Parameters<typeof BaseButton>[0]) =>
-      BaseButton(isTerminal ? { ...props, dimColor: false } : props)
+    // A plain or secondary button's label is drawn as a `text`-coloured child there; the primary one keeps the
+    // theme's accent, which is what marks the current tab.
+    const Button = (props: Parameters<typeof BaseButton>[0]) => {
+      if (!isTerminal) return BaseButton(props)
+      const isPrimary = props.variant === 'primary'
+      const label = props.label
+      return BaseButton({
+        ...props,
+        dimColor: false,
+        ...(!isPrimary && label ? { children: BaseText({ color: 'text', children: label }) } : {}),
+      })
+    }
     // The terminal has no Svg (its table still answers the name, with an empty element): bars and rules are drawn
     // there in block and line characters instead.
     const Svg = e.surface !== 'terminal' && 'Svg' in elements ? elements.Svg : null
