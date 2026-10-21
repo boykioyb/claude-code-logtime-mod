@@ -1,3 +1,6 @@
+<img width="756" height="966" alt="kio_2026-10-21_14-32-57_271" src="https://github.com/user-attachments/assets/73a94a5d-45c4-4452-a9f5-73d75d5d0547" />
+
+
 # log-time — panel log giờ làm cho Claude Code
 
 Mod cho Claude Code (Claude Desktop hoặc terminal): một panel để nhập giờ làm theo ngày, xem theo tuần và tháng,
