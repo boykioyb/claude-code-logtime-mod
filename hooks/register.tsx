@@ -618,11 +618,40 @@ export const register: Register = (on, options) => {
   }).catch(($, e, next) => (next.called ? next(e) : { deny: 'log-time: logtime_remove failed' }))
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    if (e.surface === 'terminal' || e.surface === 'mobile') {
+    // The mobile app draws no input or select yet; every other surface can run the whole pane.
+    if (e.surface === 'mobile') {
       const { Text } = $.ui.resolve(e)
-      return <Text dimColor>Panel Log time cần Claude Desktop (có ô nhập và danh sách chọn).</Text>
+      return <Text dimColor>Panel Log time cần ô nhập và danh sách chọn: mở trên Claude Desktop hoặc terminal.</Text>
     }
-    const { Box, Text, Button, Input, Select, Svg } = $.ui.resolve(e)
+    const elements = $.ui.resolve(e)
+    const { Box, Text, Button, Input, Select } = elements
+    // The terminal has no Svg (its table still answers the name, with an empty element): bars and rules are drawn
+    // there in block and line characters instead.
+    const Svg = e.surface !== 'terminal' && 'Svg' in elements ? elements.Svg : null
+    const columns = e.viewport?.columns ?? 80
+    const KIND_COLOR: Record<string, 'success' | 'warning' | 'error' | 'subtle'> = {
+      full: 'success',
+      short: 'warning',
+      over: 'error',
+    }
+    const Bar = (props: {
+      source: string
+      alt: string
+      ratio: number
+      kind: string
+      cells: number
+      width?: number
+      height?: number
+    }) => {
+      if (Svg) return <Svg source={props.source} alt={props.alt} width={props.width} height={props.height} />
+      const filled = Math.round(Math.max(0, Math.min(1, props.ratio)) * props.cells)
+      return (
+        <Text>
+          <Text color={KIND_COLOR[props.kind] ?? 'subtle'}>{'█'.repeat(filled)}</Text>
+          <Text dimColor>{'░'.repeat(props.cells - filled)}</Text>
+        </Text>
+      )
+    }
     const date = await currentDate($)
     const view = await read($, viewAtom)
     const conf = await getSettings($)
@@ -682,7 +711,14 @@ export const register: Register = (on, options) => {
       </Box>
     )
     const Spacer = () => <Box flexGrow={1} />
-    const Divider = () => <Svg source={RULE} alt="─" height={1} />
+    const Divider = () =>
+      Svg ? (
+        <Svg source={RULE} alt="─" height={1} />
+      ) : (
+        <Text dimColor wrap="truncate">
+          {'─'.repeat(Math.max(10, columns - 8))}
+        </Text>
+      )
     // A quiet action: a Lucide icon beside a plain Button (a Button holds text only, so the icon sits outside it).
     // The one button of the pane is the app's own outline button: its hover covers the whole button and its height
     // matches the app's inputs and selects. It draws text only, so no icon and no colour inside; the current tab
@@ -1342,9 +1378,12 @@ export const register: Register = (on, options) => {
                                 </Text>
                               </Box>
                               {!isOff && (
-                                <Svg
+                                <Bar
                                   source={dayBar(s.total, conf.dailyHours, s.kind)}
                                   alt={`${fmtHours(s.total)} trên ${fmtHours(conf.dailyHours)}`}
+                                  ratio={s.total / conf.dailyHours}
+                                  kind={s.kind}
+                                  cells={12}
                                   width={96}
                                   height={6}
                                 />
@@ -1414,9 +1453,12 @@ export const register: Register = (on, options) => {
                           onPress={openDay(day)}
                         />
                         {!isQuiet && st.kind !== 'missing' && (
-                          <Svg
+                          <Bar
                             source={dayBar(st.total, conf.dailyHours, st.kind)}
                             alt={`${kind.text} ${fmtHours(st.total)}`}
+                            ratio={st.total / conf.dailyHours}
+                            kind={st.kind}
+                            cells={6}
                             width={64}
                             height={4}
                           />
@@ -1569,9 +1611,12 @@ export const register: Register = (on, options) => {
             {balText}
           </Text>
         </Box>
-        <Svg
+        <Bar
           source={progressBar(bal.total, bal.budget, bal.kind)}
           alt={`${fmtHours(bal.total)} trên ${fmtHours(bal.budget)}`}
+          ratio={bal.budget > 0 ? bal.total / bal.budget : 0}
+          kind={bal.kind}
+          cells={Math.max(10, Math.min(60, columns - 12))}
         />
         {othersToday > 0 && (
           <Text size="footnote" color="subtle">

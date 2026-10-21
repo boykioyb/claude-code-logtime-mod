@@ -1,6 +1,6 @@
 # log-time — panel log giờ làm cho Claude Code
 
-Mod cho Claude Code (chạy trên Claude Desktop): một panel để nhập giờ làm theo ngày, xem theo tuần và tháng,
+Mod cho Claude Code (Claude Desktop hoặc terminal): một panel để nhập giờ làm theo ngày, xem theo tuần và tháng,
 soạn hoặc sửa ghi chú bằng AI, rồi gửi lên PMS qua các tool MCP `worklog_*` của PMS.
 
 ## Có gì
@@ -18,7 +18,8 @@ soạn hoặc sửa ghi chú bằng AI, rồi gửi lên PMS qua các tool MCP `
 
 ## Cần có
 
-- Claude Code trên **Claude Desktop** (panel cần ô nhập và danh sách chọn của bản desktop).
+- Claude Code trên **Claude Desktop** hoặc **terminal**. Trên terminal, thanh tiến độ và vạch kẻ vẽ bằng ký tự; app
+  mobile chưa dùng được (chưa có ô nhập).
 - Một **MCP server của PMS** có các tool `worklog_list_projects`, `worklog_list_tasks`, `worklog_list`,
   `worklog_create`, đã đăng nhập bằng tài khoản của bạn. Tên server mặc định là `pms`; đổi trong
   Cài đặt → Tài khoản PMS. Cần cho phép sẵn `mcp__<tên server>`, xem [Cấp quyền cho MCP server PMS](#cấp-quyền-cho-mcp-server-pms).
