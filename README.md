@@ -21,7 +21,7 @@ soạn hoặc sửa ghi chú bằng AI, rồi gửi lên PMS qua các tool MCP `
 - Claude Code trên **Claude Desktop** (panel cần ô nhập và danh sách chọn của bản desktop).
 - Một **MCP server của PMS** có các tool `worklog_list_projects`, `worklog_list_tasks`, `worklog_list`,
   `worklog_create`, đã đăng nhập bằng tài khoản của bạn. Tên server mặc định là `pms`; đổi trong
-  Cài đặt → Tài khoản PMS. Thêm quy tắc cho phép sẵn `mcp__<tên server>` để mod gọi được tool.
+  Cài đặt → Tài khoản PMS. Cần cho phép sẵn `mcp__<tên server>`, xem [Cấp quyền cho MCP server PMS](#cấp-quyền-cho-mcp-server-pms).
 - **Node** (cho Soạn bằng AI) và **GitHub CLI** `gh` đã đăng nhập (cho việc gắn issue). Không bắt buộc: thiếu thì
   hai tính năng đó báo lỗi, phần còn lại vẫn chạy.
 
@@ -43,6 +43,40 @@ Trên Claude Desktop: bấm **+** cạnh ô nhập → **Plugins** → **Add mar
 → **Add plugin**.
 
 Mở panel bằng lệnh `/log-time`.
+
+## Cấp quyền cho MCP server PMS
+
+Mod gọi tool của MCP server PMS từ panel, không qua một lượt chat. Ở chế độ quyền **auto**, bộ phân loại quyền không
+quyết được cho kiểu gọi này nên chặn, và panel báo lỗi kiểu:
+
+```
+mcp__pms__worklog_list: The server-side auto mode classifier gave no verdict …
+```
+
+Sửa bằng một quy tắc cho phép sẵn trong file cài đặt của Claude Code:
+
+- macOS / Linux: `~/.claude/settings.json`
+- Windows: `%USERPROFILE%\.claude\settings.json` (mở nhanh: `notepad "$env:USERPROFILE/.claude/settings.json"` trong PowerShell)
+
+Thêm tên server vào `permissions.allow`. Nếu file chưa có mục `permissions`:
+
+```json
+{
+  "permissions": {
+    "allow": ["mcp__pms"]
+  }
+}
+```
+
+Nếu đã có `"allow": [ … ]` thì chỉ thêm `"mcp__pms"` vào mảng đó (nhớ dấu phẩy giữa các phần tử). Lưu file rồi khởi
+động lại Claude.
+
+- `mcp__pms` cho phép **mọi** tool của server `pms`. Muốn hẹp hơn, chỉ cho phép bốn tool mod dùng:
+  `"mcp__pms__worklog_list_projects"`, `"mcp__pms__worklog_list_tasks"`, `"mcp__pms__worklog_list"`,
+  `"mcp__pms__worklog_create"`.
+- Server đặt tên khác `pms` thì đổi tên trong quy tắc cho khớp (`mcp__<tên server>`), và sửa cả trong panel ở
+  Cài đặt → Tài khoản PMS.
+- Mỗi tài khoản PMS thêm (một MCP server riêng) cần một quy tắc như vậy.
 
 ## Cấu hình khi cài
 
