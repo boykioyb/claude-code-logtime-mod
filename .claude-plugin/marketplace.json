@@ -1,0 +1,14 @@
+{
+  "name": "claude-code-logtime-mod",
+  "description": "Log time panel for Claude Code",
+  "owner": {
+    "name": "boykioyb"
+  },
+  "plugins": [
+    {
+      "name": "log-time",
+      "source": "./",
+      "description": "Pane to log work hours by day, week and month, compose and refine them with AI, and push them to a PMS through its worklog MCP tools"
+    }
+  ]
+}

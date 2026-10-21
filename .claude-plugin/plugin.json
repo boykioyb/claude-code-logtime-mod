@@ -1,0 +1,23 @@
+{
+  "name": "log-time",
+  "version": "0.2.0",
+  "description": "A pane to log work hours by day and week and push them to the PMS through its worklog MCP tools",
+  "author": {
+    "name": "boykioyb"
+  },
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "nodePath": {
+      "type": "string",
+      "title": "Node",
+      "description": "The node used to read the day's activity for Soạn bằng AI. Leave 'node' when node is on PATH; else give its full path (which node).",
+      "default": "node"
+    },
+    "ghPath": {
+      "type": "string",
+      "title": "GitHub CLI",
+      "description": "The gh used to tell an issue from a pull request when linking #numbers. Leave 'gh' when gh is on PATH; else give its full path (which gh).",
+      "default": "gh"
+    }
+  }
+}
