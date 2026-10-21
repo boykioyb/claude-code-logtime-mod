@@ -559,12 +559,17 @@ export const register: Register = (on, options) => {
     return next(e)
   })
 
+  // A failure here must still answer the command, so the person sees why the pane did not open.
   on('command.run', { command: 'log-time' }, async $ => {
-    await syncAccount($)
-    await update($, dateAtom, () => today())
-    await $.ui.open({ id: PANE, title: 'Log time' })
-    if (projects.length === 0) void loadProjects($)
-    return { text: 'Đã mở panel Log time.' }
+    try {
+      await syncAccount($)
+      await update($, dateAtom, () => today())
+      await $.ui.open({ id: PANE, title: 'Log time' })
+      if (projects.length === 0) void loadProjects($)
+      return { text: 'Đã mở panel Log time.' }
+    } catch (error) {
+      return { text: `Không mở được panel Log time: ${String(error).slice(0, 400)}` }
+    }
   })
 
   on('tool.call', { tool: 'mcp__log-time__logtime_projects' }, async $ => {

@@ -10,21 +10,19 @@ type MonthFile = { days: Record<string, Line[]> }
 let dirCache: string | null = null
 let activeAccount = MAIN_ACCOUNT
 
+// The home folder: HOME on macOS / Linux, USERPROFILE on Windows. No shell command is run here, so the same
+// code works on every platform; $.fs.write creates missing folders itself.
 async function dataDir($: EngineInterface) {
   if (dirCache) return dirCache
-  const home = (await $.env.get('HOME')) ?? '/tmp'
-  const dir = `${home}/.local/share/log-time`
-  await $.process.run(['mkdir', '-p', dir])
-  dirCache = dir
-  return dir
+  const home = (await $.env.get('HOME')) || (await $.env.get('USERPROFILE')) || '.'
+  dirCache = `${home.replace(/\\/g, '/')}/.local/share/log-time`
+  return dirCache
 }
 
 async function accountDir($: EngineInterface, account: string) {
   const base = await dataDir($)
   if (account === MAIN_ACCOUNT) return base
-  const dir = `${base}/accounts/${account.replace(/[^\w-]/g, '_')}`
-  await $.process.run(['mkdir', '-p', dir])
-  return dir
+  return `${base}/accounts/${account.replace(/[^\w-]/g, '_')}`
 }
 
 async function readJson<T>($: EngineInterface, path: string, fallback: T): Promise<T> {
@@ -33,12 +31,8 @@ async function readJson<T>($: EngineInterface, path: string, fallback: T): Promi
   return JSON.parse(await $.fs.read(path)) as T
 }
 
-// Write a sibling then rename it over the target, so a crash never leaves half a file.
 async function writeJson($: EngineInterface, path: string, value: unknown) {
-  const tmp = `${path}.tmp`
-  await $.fs.write(tmp, `${JSON.stringify(value, null, 2)}\n`)
-  const moved = await $.process.run(['mv', '-f', tmp, path])
-  if (moved.exitCode !== 0) throw new Error(`could not save ${path}: ${moved.stderr.trim()}`)
+  await $.fs.write(path, `${JSON.stringify(value, null, 2)}\n`)
 }
 
 const months = new Map<string, MonthFile>()
