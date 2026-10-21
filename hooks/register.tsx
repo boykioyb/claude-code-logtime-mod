@@ -759,8 +759,8 @@ export const register: Register = (on, options) => {
       // The terminal cannot dim a button legibly, so there the current tab is the accented (primary) one.
       <Button
         key={props.k}
-        variant={isTerminal && props.active ? 'primary' : 'secondary'}
-        dimColor={props.dim ?? props.active === false}
+        variant={props.active ? 'primary' : 'secondary'}
+        dimColor={props.dim}
         label={props.label}
         onPress={props.onPress}
       />
@@ -769,9 +769,11 @@ export const register: Register = (on, options) => {
     const header = (
       <Box flexDirection="column" gap={1}>
         <Box flexDirection="row" gap={1} alignItems="center">
-          <Act k="view-day" label="Ngày" active={view === 'day'} onPress={setView('day')} />
-          <Act k="view-week" label="Tuần" active={view === 'week'} onPress={setView('week')} />
-          <Act k="view-month" label="Tháng" active={view === 'month'} onPress={setView('month')} />
+          <Box flexDirection="row" gap={0}>
+            <Act k="view-day" label="Ngày" active={view === 'day'} onPress={setView('day')} />
+            <Act k="view-week" label="Tuần" active={view === 'week'} onPress={setView('week')} />
+            <Act k="view-month" label="Tháng" active={view === 'month'} onPress={setView('month')} />
+          </Box>
           <Spacer />
           {conf.accounts.length > 1 && (
             <Select
@@ -1301,26 +1303,28 @@ export const register: Register = (on, options) => {
               Bấm một ngày để mở.
             </Text>
             <Spacer />
-            <Act
-              k="layout-list"
-              icon="list"
-              label="Danh sách"
-              active={monthLayout === 'list'}
-              onPress={() => {
-                monthLayout = 'list'
-                void redraw($)
-              }}
-            />
-            <Act
-              k="layout-grid"
-              icon="calendar"
-              label="Lịch"
-              active={monthLayout === 'grid'}
-              onPress={() => {
-                monthLayout = 'grid'
-                void redraw($)
-              }}
-            />
+            <Box flexDirection="row" gap={0}>
+              <Act
+                k="layout-list"
+                icon="list"
+                label="Danh sách"
+                active={monthLayout === 'list'}
+                onPress={() => {
+                  monthLayout = 'list'
+                  void redraw($)
+                }}
+              />
+              <Act
+                k="layout-grid"
+                icon="calendar"
+                label="Lịch"
+                active={monthLayout === 'grid'}
+                onPress={() => {
+                  monthLayout = 'grid'
+                  void redraw($)
+                }}
+              />
+            </Box>
             <Act
               k="pull-month"
               icon="pull"
