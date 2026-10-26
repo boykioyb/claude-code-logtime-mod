@@ -335,6 +335,15 @@ const compose = async ($: EngineInterface) => {
     const activity = await readActivity($, date)
     aiLog($, `Tìm thấy ${describeActivity(activity)}`)
     if (aiSkipLabels.length) aiLog($, `Bỏ qua dự án nội bộ: ${aiSkipLabels.join(', ')}`)
+    // With no project to map the day onto, the model can only answer nothing: say why instead.
+    if (clientProjects.length === 0) {
+      const why = projectsError
+        ? `không lấy được danh sách dự án từ MCP server "${account.server}": ${projectsError}`
+        : `MCP server "${account.server}" không trả về dự án khách hàng nào`
+      aiLog($, `Dừng: ${why}. Kiểm tra tên server ở Cài đặt → Tài khoản PMS.`, 'error')
+      return say($, `Không soạn được: ${why}.`, 'error')
+    }
+    aiLog($, `${clientProjects.length} dự án khách hàng: ${clientProjects.map(p => p.label).join(', ')}`)
     aiLog($, `Tài khoản ${account.label}${account.role.trim() ? ` · chỉ lấy việc: ${account.role.trim()}` : ''}`)
     if (otherLines.length)
       aiLog($, `Tài khoản khác đã log ${totalHours(otherLines)}h hôm nay — không soạn lại các việc đó`)
