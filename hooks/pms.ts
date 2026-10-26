@@ -31,6 +31,12 @@ export async function hasServer($: EngineInterface, name: string) {
   return tools.some(t => t.name === `mcp__${name}__worklog_create`)
 }
 
+// Every MCP server connected in this session that can log time: the ones offering worklog_create.
+export async function listPmsServers($: EngineInterface): Promise<string[]> {
+  const tools = await $.tool.list()
+  return tools.flatMap(t => t.name.match(/^mcp__(.+)__worklog_create$/)?.slice(1, 2) ?? []).sort()
+}
+
 export type Option = { label: string; value: string }
 
 async function call(

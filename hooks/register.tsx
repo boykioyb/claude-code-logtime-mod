@@ -8,7 +8,7 @@ import { composeLines, describeActivity, readActivity, refineNote, useNode } fro
 import type { IconName, IconTone } from './icons'
 import { icon } from './icons'
 import { linkIssues, useGh } from './link'
-import { createWorklog, hasServer, listProjects, listTasks, listWorklogs, useServer } from './pms'
+import { createWorklog, listPmsServers, listProjects, listTasks, listWorklogs, useServer } from './pms'
 import type { Account, Line, Settings, Task } from './rules'
 import {
   accountBudget,
@@ -19,7 +19,6 @@ import {
   drafts,
   fillToBudget,
   isRepo,
-  isServerName,
   issueNumbers,
   fromIso,
   MAIN_ACCOUNT,
@@ -874,8 +873,10 @@ export const register: Register = (on, options) => {
     if (isSettingsOpen && !tooling)
       tooling = { node: await versionOf($, binaries.node), gh: await versionOf($, binaries.gh) }
     if (!isSettingsOpen) tooling = null
-    const connected = new Set<string>()
-    if (isSettingsOpen) for (const a of conf.accounts) if (await hasServer($, a.server)) connected.add(a.server)
+    // The PMS servers this session can log through, offered as a list instead of a name to type.
+    const pmsServers = isSettingsOpen ? await listPmsServers($) : []
+    const connected = new Set(pmsServers)
+    const freeServers = pmsServers.filter(name => !conf.accounts.some(a => a.server === name))
     const repoRows = projects.filter(p => conf.repos[p.label])
     const repoCandidates = projects.filter(p => !conf.repos[p.label] && !conf.aiSkipLabels.includes(p.label))
     const skipped = conf.aiSkipLabels
@@ -992,9 +993,32 @@ export const register: Register = (on, options) => {
                   )
                 }
               >
-                <Text mono size="footnote" color={connected.has(a.server) ? 'success' : 'error'}>
-                  {connected.has(a.server) ? '●' : '○'} {a.server}
-                </Text>
+                {/* The server is picked from the connected ones; one no longer connected stays listed, marked ○. */}
+                <Select
+                  key={`account-server-${a.id}`}
+                  value={a.server}
+                  options={[...new Set([a.server, ...pmsServers])].map(name => ({
+                    value: name,
+                    label: `${connected.has(name) ? '●' : '○'} ${name}`,
+                  }))}
+                  onSelect={v => {
+                    if (v === a.server) return
+                    if (conf.accounts.some(x => x.id !== a.id && x.server === v))
+                      return say($, `Server ${v} đã thuộc một tài khoản khác.`, 'warn')
+                    saveSettings({
+                      ...conf,
+                      accounts: conf.accounts.map(x => (x.id === a.id ? { ...x, server: v } : x)),
+                    })
+                    // A new server means a new project list for the account in use.
+                    if (account.id === a.id) {
+                      useServer(v)
+                      projects = []
+                      projectsError = ''
+                      void loadProjects($)
+                    }
+                    say($, `Tài khoản ${a.label} giờ log qua ${v}. Nhớ cho phép sẵn mcp__${v} để mod gọi được.`)
+                  }}
+                />
                 <Text size="footnote" color="subtle">
                   · {connected.has(a.server) ? '' : 'chưa nối · '}AI: {a.role.trim() || 'mọi việc'}
                 </Text>
@@ -1030,21 +1054,6 @@ export const register: Register = (on, options) => {
             ])}
             {settingsForm === 'account' ? (
               [
-                <Row label="Tên tài khoản">
-                  <Input
-                    key="account-label"
-                    autoFocus
-                    placeholder="Tên hiển thị"
-                    submitLabel="Tiếp"
-                    value={accountDraft.label}
-                    onInput={v => {
-                      accountDraft.label = v
-                    }}
-                    onSubmit={v => {
-                      accountDraft.label = v
-                    }}
-                  />
-                </Row>,
                 <Row
                   label="MCP server"
                   action={
@@ -1060,30 +1069,52 @@ export const register: Register = (on, options) => {
                     />
                   }
                 >
-                  <Input
-                    key="account-server"
-                    placeholder="pms-…"
-                    submitLabel="Thêm"
-                    value={accountDraft.server}
-                    onInput={v => {
-                      accountDraft.server = v
-                    }}
-                    onSubmit={v => {
-                      const server = v.trim()
-                      const label = accountDraft.label.trim()
-                      if (!label) return say($, 'Đặt tên tài khoản trước.', 'warn')
-                      if (!isServerName(server)) return say($, 'Tên server chỉ gồm chữ, số, - và _.', 'warn')
-                      if (conf.accounts.some(a => a.server === server))
-                        return say($, 'Server này đã có tài khoản.', 'warn')
-                      const id = `${label.toLowerCase().replace(/[^\w]+/g, '-')}-${Date.now().toString(36)}`
-                      saveSettings({ ...conf, accounts: [...conf.accounts, { id, label, server, role: '' }] })
-                      accountDraft.label = ''
-                      accountDraft.server = ''
-                      closeForms()
-                      say($, `Đã thêm tài khoản ${label}. Nhớ cho phép sẵn mcp__${server} để mod gọi được.`)
-                    }}
-                  />
+                  {freeServers.length === 0 ? (
+                    <Text size="footnote" color="subtle">
+                      Không còn MCP server nào có tool worklog chưa gắn tài khoản. Kết nối server PMS của người đó
+                      trước.
+                    </Text>
+                  ) : (
+                    <Select
+                      key="account-server"
+                      value={accountDraft.server}
+                      options={[
+                        { value: '', label: 'Chọn server…' },
+                        ...freeServers.map(name => ({ value: name, label: `● ${name}` })),
+                      ]}
+                      onSelect={v => {
+                        accountDraft.server = v
+                        if (!accountDraft.label.trim()) accountDraft.label = v
+                        void redraw($)
+                      }}
+                    />
+                  )}
                 </Row>,
+                accountDraft.server && (
+                  <Row label="Tên tài khoản">
+                    <Input
+                      key={`account-label-${accountDraft.server}`}
+                      placeholder="Tên hiển thị"
+                      submitLabel="Thêm"
+                      value={accountDraft.label}
+                      onInput={v => {
+                        accountDraft.label = v
+                      }}
+                      onSubmit={v => {
+                        const server = accountDraft.server
+                        const label = v.trim() || server
+                        if (conf.accounts.some(a => a.server === server))
+                          return say($, 'Server này đã có tài khoản.', 'warn')
+                        const id = `${label.toLowerCase().replace(/[^\w]+/g, '-')}-${Date.now().toString(36)}`
+                        saveSettings({ ...conf, accounts: [...conf.accounts, { id, label, server, role: '' }] })
+                        accountDraft.label = ''
+                        accountDraft.server = ''
+                        closeForms()
+                        say($, `Đã thêm tài khoản ${label}. Nhớ cho phép sẵn mcp__${server} để mod gọi được.`)
+                      }}
+                    />
+                  </Row>
+                ),
               ]
             ) : (
               <Row label="">
