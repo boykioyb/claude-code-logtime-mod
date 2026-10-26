@@ -65,6 +65,11 @@ export async function listProjects($: EngineInterface) {
   return asOptions(await call($, TOOL.projects, {}))
 }
 
+// One server's projects, whichever account is in use: the settings key on the projects of every account.
+export async function listProjectsOf($: EngineInterface, name: string) {
+  return asOptions(await call($, `mcp__${name}__worklog_list_projects`, {}))
+}
+
 export async function listTasks($: EngineInterface, projectId: string, q: string): Promise<Task[]> {
   return asOptions(await call($, TOOL.tasks, q ? { projectId, q } : { projectId })).map(o => ({
     id: o.value,

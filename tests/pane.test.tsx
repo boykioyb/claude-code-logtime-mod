@@ -53,7 +53,15 @@ test('an account picks its PMS server from the connected ones, for the main acco
     files[e.path] = e.text
     return { value: undefined }
   })
-  on('tool.call', () => ({ result: '[]', text: '[]' }))
+  // Each server answers its own projects.
+  const PROJECTS: Record<string, string> = {
+    'mcp__new-pms__worklog_list_projects': JSON.stringify([{ id: 'p1', name: 'YAHAGI 168' }]),
+    'mcp__pms-minh__worklog_list_projects': JSON.stringify([{ id: 'p2', name: 'LUNCHBOX' }]),
+  }
+  on('tool.call', (_, e) => {
+    const out = PROJECTS[(e as unknown as { tool: string }).tool] ?? '[]'
+    return { result: out, text: out }
+  })
   // Two servers can log time; a third connected one has no worklog tools and is not offered.
   on('tool.list', () => ({
     value: [
@@ -78,5 +86,10 @@ test('an account picks its PMS server from the connected ones, for the main acco
   await ui.select({ key: 'account-server', value: 'pms-minh' })
   await ui.input({ key: 'account-label-pms-minh', text: 'Minh', kind: 'submit' })
   expect(saved().accounts.map(a => `${a.label}:${a.server}`)).toEqual(['Tôi:new-pms', 'Minh:pms-minh'])
+  // The project-keyed settings cover every account: the added server's projects are fetched without a reload.
+  await ui.press({ key: 'settings' })
+  await ui.press({ key: 'settings' })
+  expect((await ui.find({ key: 'skip-p1' })) !== undefined).toBe(true)
+  expect((await ui.find({ key: 'skip-p2' })) !== undefined).toBe(true)
   await ui.unmount()
 })

@@ -8,7 +8,7 @@ import { composeLines, describeActivity, readActivity, refineNote, useNode } fro
 import type { IconName, IconTone } from './icons'
 import { icon } from './icons'
 import { linkIssues, useGh } from './link'
-import { createWorklog, listPmsServers, listProjects, listTasks, listWorklogs, useServer } from './pms'
+import { createWorklog, listPmsServers, listProjects, listProjectsOf, listTasks, listWorklogs, useServer } from './pms'
 import type { Account, Line, Settings, Task } from './rules'
 import {
   accountBudget,
@@ -169,6 +169,21 @@ const loadProjects = async ($: EngineInterface) => {
     projectsError = String(error).slice(0, 300)
   } finally {
     isLoadingProjects = false
+  }
+  await redraw($)
+}
+
+// Each account server's projects, for the settings keyed on a project (GitHub repos, the AI's skip list): those
+// cover every account, not only the one in use, and a server added or switched to is fetched as soon as it shows.
+type ServerProjects = { state: 'loading' } | { state: 'done'; list: Option[] } | { state: 'error'; error: string }
+const serverProjects = new Map<string, ServerProjects>()
+const loadServerProjects = async ($: EngineInterface, name: string) => {
+  if (serverProjects.get(name)?.state === 'loading') return
+  serverProjects.set(name, { state: 'loading' })
+  try {
+    serverProjects.set(name, { state: 'done', list: await listProjectsOf($, name) })
+  } catch (error) {
+    serverProjects.set(name, { state: 'error', error: String(error).slice(0, 200) })
   }
   await redraw($)
 }
@@ -806,6 +821,8 @@ export const register: Register = (on, options) => {
             dim={!isSettingsOpen}
             onPress={() => {
               isSettingsOpen = !isSettingsOpen
+              // Opening the settings fetches each account's projects afresh.
+              if (isSettingsOpen) serverProjects.clear()
               void redraw($)
             }}
           />
@@ -877,8 +894,32 @@ export const register: Register = (on, options) => {
     const pmsServers = isSettingsOpen ? await listPmsServers($) : []
     const connected = new Set(pmsServers)
     const freeServers = pmsServers.filter(name => !conf.accounts.some(a => a.server === name))
-    const repoRows = projects.filter(p => conf.repos[p.label])
-    const repoCandidates = projects.filter(p => !conf.repos[p.label] && !conf.aiSkipLabels.includes(p.label))
+    if (isSettingsOpen) {
+      for (const a of conf.accounts) {
+        if (connected.has(a.server) && !serverProjects.has(a.server)) void loadServerProjects($, a.server)
+      }
+    }
+    const accountProjects = conf.accounts.map(a => ({ account: a, got: serverProjects.get(a.server) }))
+    const settingsProjects = [
+      ...new Map(
+        accountProjects.flatMap(x => (x.got?.state === 'done' ? x.got.list : [])).map(p => [p.label, p] as const),
+      ).values(),
+    ]
+    const isLoadingSettingsProjects = accountProjects.some(x => x.got?.state === 'loading')
+    // Why the project-keyed settings are empty, when they are: still loading, or which account's server failed.
+    const projectsNote = isLoadingSettingsProjects
+      ? 'Đang tải dự án từ PMS…'
+      : accountProjects
+          .flatMap(x =>
+            !connected.has(x.account.server)
+              ? [`${x.account.label}: server ${x.account.server} chưa nối`]
+              : x.got?.state === 'error'
+                ? [`${x.account.label}: không tải được dự án (${x.got.error})`]
+                : [],
+          )
+          .join(' · ')
+    const repoRows = settingsProjects.filter(p => conf.repos[p.label])
+    const repoCandidates = settingsProjects.filter(p => !conf.repos[p.label] && !conf.aiSkipLabels.includes(p.label))
     const skipped = conf.aiSkipLabels
 
     const settingsCard = isSettingsOpen && (
@@ -1139,7 +1180,7 @@ export const register: Register = (on, options) => {
             {repoRows.length === 0 && (
               <Row label="">
                 <Text size="footnote" color="subtle">
-                  Chưa dự án nào có repo.
+                  {settingsProjects.length === 0 && projectsNote ? projectsNote : 'Chưa dự án nào có repo.'}
                 </Text>
               </Row>
             )}
@@ -1242,8 +1283,13 @@ export const register: Register = (on, options) => {
                 : 'AI được gán việc vào mọi dự án. Bấm một dự án để AI bỏ qua (việc nội bộ).'
             }
           >
+            {settingsProjects.length === 0 && (
+              <Text size="footnote" color="subtle">
+                {projectsNote || 'PMS chưa trả về dự án nào.'}
+              </Text>
+            )}
             <Box flexDirection="row" gap={1} flexWrap="wrap">
-              {projects.map(p => {
+              {settingsProjects.map(p => {
                 const isSkipped = skipped.includes(p.label)
                 return (
                   <Act
