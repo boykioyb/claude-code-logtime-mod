@@ -83,6 +83,8 @@ const say = ($: EngineInterface, text: string, tone: 'ok' | 'warn' | 'error' = '
 
 const today = () => toIso(new Date())
 const currentDate = async ($: EngineInterface) => (await read($, dateAtom)) || today()
+const WORKLOG_TOOL = /^mcp__(.+)__worklog_(list_projects|list_tasks|list|create)$/
+
 const getSettings = async ($: EngineInterface) => (settings ??= await readSettings($))
 
 // --- accounts: which PMS identity the pane reads and sends as ---
@@ -96,9 +98,11 @@ const activeAccount = async ($: EngineInterface): Promise<Account> => {
 // Point the store and the PMS calls at the chosen account; a new server means a new project list.
 const syncAccount = async ($: EngineInterface) => {
   const account = await activeAccount($)
+  // The server always follows the account: the main account is current from the start, so an early return before
+  // this line left its calls on the default server, and a server picked in the settings would not apply.
+  useServer(account.server)
   if (currentAccount() === account.id) return account
   useAccount(account.id)
-  useServer(account.server)
   projects = []
   projectsError = ''
   form.projectId = ''
@@ -575,6 +579,18 @@ export const register: Register = (on, options) => {
   binaries = { node: String(options.nodePath ?? 'node'), gh: String(options.ghPath ?? 'gh') }
   useNode(binaries.node)
   useGh(binaries.gh)
+
+  // The panel's own PMS calls (listing projects and tasks, reading and creating worklogs) are the person's own
+  // actions, pressed in the panel, so they are allowed here instead of needing an allow rule per server in the
+  // settings. Only this plugin's calls, only the four worklog tools, only a server an account is set to, and never
+  // past an organisation's ceiling; the model's own calls still go through the ordinary permission check.
+  on('tool.check', async ($, e, next) => {
+    const server = e.tool.match(WORKLOG_TOOL)?.[1]
+    if (next.origin.plugin !== 'log-time' || !server || (e.ceiling && e.ceiling !== 'allow')) return next(e)
+    const { accounts } = await getSettings($)
+    if (!accounts.some(a => a.server === server)) return next(e)
+    return { decision: 'allow', reason: `log-time: lệnh PMS bạn bấm trong panel (${server})` }
+  })
 
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'log-time', description: 'Mở panel Log time (nhập giờ làm, gửi lên PMS)' })

@@ -24,8 +24,9 @@ soạn hoặc sửa ghi chú bằng AI, rồi gửi lên PMS qua các tool MCP `
 - Claude Code trên **Claude Desktop** hoặc **terminal**. Trên terminal, thanh tiến độ và vạch kẻ vẽ bằng ký tự; app
   mobile chưa dùng được (chưa có ô nhập).
 - Một **MCP server của PMS** có các tool `worklog_list_projects`, `worklog_list_tasks`, `worklog_list`,
-  `worklog_create`, đã đăng nhập bằng tài khoản của bạn. Tên server mặc định là `pms`; đổi trong
-  Cài đặt → Tài khoản PMS. Cần cho phép sẵn `mcp__<tên server>`, xem [Cấp quyền cho MCP server PMS](#cấp-quyền-cho-mcp-server-pms).
+  `worklog_create`, đã đăng nhập bằng tài khoản của bạn. Chọn server cho từng tài khoản trong Cài đặt → Tài khoản
+  PMS (danh sách các server đang kết nối có tool worklog). Không cần quy tắc cho phép nào, xem
+  [Quyền gọi MCP server PMS](#quyền-gọi-mcp-server-pms).
 - **Node** (cho Soạn bằng AI) và **GitHub CLI** `gh` đã đăng nhập (cho việc gắn issue). Không bắt buộc: thiếu thì
   hai tính năng đó báo lỗi, phần còn lại vẫn chạy.
 
@@ -48,39 +49,22 @@ Trên Claude Desktop: bấm **+** cạnh ô nhập → **Plugins** → **Add mar
 
 Mở panel bằng lệnh `/log-time`.
 
-## Cấp quyền cho MCP server PMS
+## Quyền gọi MCP server PMS
 
-Mod gọi tool của MCP server PMS từ panel, không qua một lượt chat. Ở chế độ quyền **auto**, bộ phân loại quyền không
-quyết được cho kiểu gọi này nên chặn, và panel báo lỗi kiểu:
+Từ bản 0.3.8, mod tự cho phép các lệnh PMS **do chính panel gửi**: lấy dự án, lấy task, đọc và tạo worklog, qua
+server của một tài khoản đã cài. Bạn không cần thêm quy tắc nào vào `settings.json`, kể cả khi đổi server hay thêm
+tài khoản, và ở chế độ quyền **auto** panel cũng không bị chặn.
 
-```
-mcp__pms__worklog_list: The server-side auto mode classifier gave no verdict …
-```
+Phạm vi cho phép giữ hẹp:
 
-Sửa bằng một quy tắc cho phép sẵn trong file cài đặt của Claude Code:
+- chỉ lệnh gửi từ log-time, không phải lệnh model tự gọi trong cuộc trò chuyện: những lệnh đó vẫn qua kiểm tra quyền
+  như thường;
+- chỉ bốn tool `worklog_list_projects`, `worklog_list_tasks`, `worklog_list`, `worklog_create`;
+- chỉ server mà một tài khoản trong Cài đặt đang dùng;
+- không vượt mức tổ chức đặt cho connector (nếu quản trị viên đặt "hỏi" hay "chặn" thì vẫn theo đó).
 
-- macOS / Linux: `~/.claude/settings.json`
-- Windows: `%USERPROFILE%\.claude\settings.json` (mở nhanh: `notepad "$env:USERPROFILE/.claude/settings.json"` trong PowerShell)
-
-Thêm tên server vào `permissions.allow`. Nếu file chưa có mục `permissions`:
-
-```json
-{
-  "permissions": {
-    "allow": ["mcp__pms"]
-  }
-}
-```
-
-Nếu đã có `"allow": [ … ]` thì chỉ thêm `"mcp__pms"` vào mảng đó (nhớ dấu phẩy giữa các phần tử). Lưu file rồi khởi
-động lại Claude.
-
-- `mcp__pms` cho phép **mọi** tool của server `pms`. Muốn hẹp hơn, chỉ cho phép bốn tool mod dùng:
-  `"mcp__pms__worklog_list_projects"`, `"mcp__pms__worklog_list_tasks"`, `"mcp__pms__worklog_list"`,
-  `"mcp__pms__worklog_create"`.
-- Server đặt tên khác `pms` thì đổi tên trong quy tắc cho khớp (`mcp__<tên server>`), và sửa cả trong panel ở
-  Cài đặt → Tài khoản PMS.
-- Mỗi tài khoản PMS thêm (một MCP server riêng) cần một quy tắc như vậy.
+Bản cũ hơn cần quy tắc `"mcp__<tên server>"` trong `permissions.allow` của `~/.claude/settings.json`
+(Windows: `%USERPROFILE%\.claude\settings.json`); quy tắc đó vẫn dùng được nhưng không còn cần.
 
 ## Cập nhật
 

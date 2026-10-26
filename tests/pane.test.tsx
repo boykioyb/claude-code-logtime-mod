@@ -93,3 +93,38 @@ test('an account picks its PMS server from the connected ones, for the main acco
   expect((await ui.find({ key: 'skip-p2' })) !== undefined).toBe(true)
   await ui.unmount()
 })
+
+test("the panel's own worklog calls are allowed, anyone else's go to the ordinary check", async ($, on) => {
+  const SETTINGS = '/home/test/.local/share/log-time/settings.json'
+  const files: Record<string, string> = {
+    [SETTINGS]: JSON.stringify({ accounts: [{ id: 'me', label: 'Tôi', server: 'new-pms', role: '' }] }),
+  }
+  on('env.get', () => ({ value: '/home/test' }))
+  on('fs.exists', (_, e) => ({ value: e.path in files }))
+  on('fs.read', (_, e) => ({ value: files[e.path] ?? '' }))
+  on('fs.write', () => ({ value: undefined }))
+  on('tool.list', () => ({ value: [{ name: 'mcp__new-pms__worklog_create', description: '', mcp: true }] }))
+  // Beneath the plugins, no settings rule allows anything; what reaches here was not allowed above.
+  const reached: string[] = []
+  on('tool.check', (_, e) => {
+    reached.push(e.tool)
+    return { decision: 'ask' as const, reason: 'no rule' }
+  })
+  const called: string[] = []
+  on('tool.call', (_, e) => {
+    called.push((e as unknown as { tool: string }).tool)
+    return { result: '[]', text: '[]' }
+  })
+
+  // Mounting reads the settings; a check raised by the test itself, not by log-time, is left to the ordinary rules.
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  // The panel's own calls (the projects on mounting and in the settings) go to the account's server and are
+  // allowed by log-time, so none of them gets here.
+  await ui.press({ key: 'settings' })
+  expect(reached).toEqual([])
+  const verdict = await $.tool.check({ tool: 'mcp__new-pms__worklog_create', input: {} })
+  expect(verdict.decision).toBe('ask')
+  expect(reached).toEqual(['mcp__new-pms__worklog_create'])
+  expect(called.length > 0 && called.every(t => t.startsWith('mcp__new-pms__'))).toBe(true)
+  await ui.unmount()
+})
